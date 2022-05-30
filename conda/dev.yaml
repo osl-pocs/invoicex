@@ -1,0 +1,22 @@
+name: ghinvoice
+channels:
+  - conda-forge
+dependencies:
+#   - aiohttp >=3.7.1,<3.8.0
+#   - jinja2
+#   - pip
+#   - requests >=2.23,<3  # pinning for github graphql
+#   - python-dotenv
+#   - pandas
+#   - pandoc
+#   - tabulate
+#   - websockets >=8.1,<9
+#   # dev
+#   - black
+#   - flake8
+#   - isort
+#   - pre-commit
+#   - pip:
+#     - gql==3.0.0a5
+  - python
+  - poetry

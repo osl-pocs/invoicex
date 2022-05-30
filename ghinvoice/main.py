@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+"""
+Read information from Github API using GraphQL GitHubAPI.
+"""
+
+import asyncio
+import os
+from datetime import date, timedelta
+
+import reader
+import report
+
+
+def cli_parser():
+    import argparse
+
+    from dotenv import load_dotenv
+
+    dotenv_path = os.path.join(
+        os.path.abspath(os.path.dirname(os.path.dirname(__file__))), ".env"
+    )
+
+    load_dotenv(dotenv_path=dotenv_path)
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--gh-user",
+        dest="gh_user",
+        action="store",
+        type=str,
+        default=None,
+        required=True,
+        help="The GitHub username.",
+    )
+    parser.add_argument(
+        "--year-month",
+        dest="year_month",
+        action="store",
+        type=str,
+        required=True,
+        help="Format: YYYY-MM",
+    )
+    parser.add_argument(
+        "--gh-org",
+        dest="gh_repos",
+        action="append",
+        help="Format: org/repo",
+    )
+    parser.add_argument(
+        "--token",
+        dest="token",
+        action="store",
+        type=str,
+        default=os.getenv("GITHUB_TOKEN"),
+        help="The GitHub access token.",
+    )
+    # TODO: add option for custom output dir
+    """
+    parser.add_argument(
+        "--output-dir",
+        dest="output_dir",
+        action="store",
+        type=str,
+        default="/tmp/gh-invoice/",
+        help="The output directory for the reports (default: /tmp)",
+    )
+    """
+
+    return parser
+
+
+async def main():
+    args = cli_parser().parse_args()
+    results = await reader.get_data(args)
+    await report.generate(results, args)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
