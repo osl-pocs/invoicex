@@ -1,11 +1,9 @@
 #!/usr/bin/env python
-"""
-Read information from Github API using GraphQL GitHubAPI.
-"""
 
 import asyncio
-import os
 from datetime import date, timedelta
+import os
+import time
 
 import reader
 import report
@@ -55,6 +53,14 @@ def cli_parser():
         default=os.getenv("GITHUB_TOKEN"),
         help="The GitHub access token.",
     )
+    parser.add_argument(
+        "--timezone",
+        dest="timezone",
+        action="store",
+        type=str,
+        default=time.strftime("%z"),
+        help="The GitHub access token.",
+    )
     # TODO: add option for custom output dir
     """
     parser.add_argument(
@@ -62,7 +68,7 @@ def cli_parser():
         dest="output_dir",
         action="store",
         type=str,
-        default="/tmp/gh-invoice/",
+        default="/tmp/invoicex/",
         help="The output directory for the reports (default: /tmp)",
     )
     """

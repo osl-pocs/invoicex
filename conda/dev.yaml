@@ -1,4 +1,4 @@
-name: ghinvoice
+name: invoicex
 channels:
   - conda-forge
 dependencies:

@@ -3,7 +3,7 @@ line-length = 79
 target-version = ["py37", "py38"]
 
 [tool.poetry]
-name = "ghinvoice"
+name = "invoicex"
 version = "1.0.0"
 description = ""
 authors = ["Ivan Ogasawara <ivan.ogasawara@gmail.com>"]

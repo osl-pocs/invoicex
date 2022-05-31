@@ -1,4 +1,6 @@
 import dataclasses
+import datetime
+from datetime import timedelta
 import re
 from typing import List, Optional
 
@@ -6,6 +8,14 @@ import pandas as pd
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 from jinja2 import Template
+
+
+def extract_date(dt: str, tz: str) -> str:
+    # TODO: need to be improved
+    dtz = datetime.datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S%z")
+    delta = timedelta(hours=float(tz.replace("-", "")) / 100)
+    dtz += delta if "-" not in tz else (-delta)
+    return dtz.strftime("%Y-%m-%d")
 
 
 class GitHubGraphQL:
@@ -17,6 +27,7 @@ class GitHubGraphQL:
         self.user = parameters.gh_user
         self.repos = parameters.gh_repos
         self.year_month = parameters.year_month
+        self.tz = parameters.timezone
 
         self.transport = AIOHTTPTransport(
             headers={"Authorization": f"bearer {self.token}"},
@@ -70,12 +81,15 @@ class GitHubGraphQL:
                         commits(first: $first) {
                             nodes {
                                 commit {
-                                    id
+                                    oid
                                     author {
                                         user {
                                             login
                                         }
                                     }
+                                    authoredByCommitter
+                                    message
+                                    authoredDate
                                 }
                             }
                         }
@@ -135,7 +149,7 @@ class GitHubGraphQL:
 
         for row in raw_data:
             if row["author"]["login"] == self.user:
-                created_at = row["createdAt"][:10]
+                created_at = extract_date(row["createdAt"], self.tz)
                 if created_at[:7] == self.year_month:
                     data.append(
                         {
@@ -147,7 +161,7 @@ class GitHubGraphQL:
             for comment in row["comments"]["nodes"]:
                 if comment["author"]["login"] != self.user:
                     continue
-                created_at = comment["createdAt"][:10]
+                created_at = extract_date(comment["createdAt"], tz=self.tz)
                 if self.year_month == created_at[:7]:
                     data.append(
                         {
@@ -171,8 +185,8 @@ class GitHubGraphQL:
         data = []
 
         for row in raw_data:
-            created_at = row["createdAt"][:10]
-            merged_at = row.get("mergeddAt")
+            created_at = extract_date(row["createdAt"], tz=self.tz)
+            # merged_at = extract_date(row.get("mergedAt"), tz=self.tz)
 
             if row["author"]["login"] == self.user:
                 if created_at[:7] == self.year_month:
@@ -183,32 +197,42 @@ class GitHubGraphQL:
                             "action": f"PR#{row['number']}: {row['title']}",
                         }
                     )
-            # breakpoint()
             for comment in row["comments"]["nodes"]:
                 if comment["author"]["login"] != self.user:
                     continue
 
-                created_at = comment["createdAt"][:10]
+                created_at = extract_date(comment["createdAt"], tz=self.tz)
                 if self.year_month == created_at[:7]:
                     data.append(
                         {
                             "datetime": created_at,
                             "time": "00:00",  # user need to do it manually
-                            "action": f"PR#{row['number']}: {row['title']}",
+                            "action": f"PRs Discussion and Review",
                         }
                     )
 
-            for commit in row["commits"]["nodes"]:
-                if commit.get("author", {}).get("user", {}).get("login") != self.user:
+            for _commit in row["commits"]["nodes"]:
+                commit = _commit["commit"]
+
+                _commit_user = commit.get("author", {}).get("user", {})
+                commit_user = (
+                    None if not _commit_user else _commit_user.get("login")
+                )
+
+                if commit_user is None or commit_user != self.user:
                     continue
 
-                created_at = comment["createdAt"][:10]
+                commit_extra = ""
+                if not row["author"]["login"] == commit_user:
+                    commit_extra = "(commit)"
+
+                created_at = extract_date(commit["authoredDate"], tz=self.tz)
                 if self.year_month == created_at[:7]:
                     data.append(
                         {
                             "datetime": created_at,
                             "time": "00:00",  # user need to do it manually
-                            "action": f"PR#{row['number']}: {row['title']}",
+                            "action": f"PR#{row['number']}{commit_extra}: {row['title']}",
                         }
                     )
         result = pd.DataFrame(data)
@@ -223,11 +247,13 @@ class GitHubGraphQL:
         )
 
     async def _summarize(self, data: pd.DataFrame):
-        return (
+        result = (
             data.groupby("datetime")
             .agg(lambda row: "\n".join([f"- {v}" for v in set(row)]))
             .reset_index()
         )
+        result["time"] = "00:00"
+        return result
 
     async def get_data(self):
         async with Client(

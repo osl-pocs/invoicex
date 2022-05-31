@@ -12,6 +12,6 @@ load_dotenv(dotenv_path=dotenv_path)
 
 
 async def generate(results: pd.DataFrame, args: dict):
-    os.makedirs("/tmp/gh-invoice", exist_ok=True)
-    with open(f"/tmp/gh-invoice/{args.year_month}.md", "w") as f:
+    os.makedirs("/tmp/invoicex", exist_ok=True)
+    with open(f"/tmp/invoicex/{args.year_month}.md", "w") as f:
         f.write(results.to_markdown(index=False))
