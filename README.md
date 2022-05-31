@@ -2,19 +2,29 @@
 
 ## Installation
 
+### Development
+
+```bash
+mamba env create --file conda/dev.yaml --force
+conda activate invoicex
+poetry install
+```
+
 ## Configuration
+
+provide a `.env` file with the the `GITHUB_TOKEN`:
+
+```bash
+GITHUB_TOKEN=ghp_blablabla
+```
+## Running
 
 Example:
 
-```yaml
-- name: inlyse
-  title: "Reporting OSL projects"
-  repos:
-    - osl-incubator/poc-django-stripe
-  authors:
-    - xmnlab: Ivan Ogasawara
-  output-format: md
-  output-dir: "/tmp/ghreport"
+```bash
+python invoicex/main.py \
+  --year-month 2022-04 \
+  --gh-user xmnlab \
+  --gh-org osl-incubator/invoicex \
+  --timezone "-0400"
 ```
-
-## Running
