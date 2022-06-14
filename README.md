@@ -24,7 +24,7 @@ Example:
 ```bash
 python invoicex/main.py \
   --year-month 2022-04 \
-  --gh-user xmnlab \
+  --gh-user $USER \
   --gh-org osl-incubator/invoicex \
   --timezone "-0400"
 ```

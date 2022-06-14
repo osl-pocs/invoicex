@@ -1,59 +1,48 @@
+from asyncio import tasks
 import sqlite3
 from typing import Any
 import pandas as pd
 import datetime as dt
-import os
 
 TTRACK_DB = "data_test/.timetrackdb"
 
 
 class TTrack:
-    def __init__(self, timetrackdb_file) -> os.path:
+    def __init__(self, timetrackdb_file, parameters):
         self.timetrackdb = timetrackdb_file
+        self.year_month = parameters.year_month
+        self.tasks = parameters.ttrack_task
 
     def _conn_point(self):
-        conn = sqlite3.connect(self.timetrackdb)
+        """Connect and point to .timetrackdb SQLite DB"""
+        conn = sqlite3.connect(TTRACK_DB)
         cur = conn.cursor()
         return cur
 
     def _get_query(self, task=None):
-        if task is None:
-            return (
-                "SELECT name, start, end FROM tasks AS T"
-                " INNER JOIN tasklog AS L ON T.id=L.task"
-                " ORDER BY start"
-            )
-        if ", " in task:
-            tasks = task.split(", ")
-            other = []
-            for x in tasks[1:]:
-                other.append(f" OR name='{x}'")
-            return (
-                "SELECT name, start, end FROM tasks AS T"
-                " INNER JOIN tasklog AS L ON T.id=L.task"
-                f" WHERE name='{tasks[0]}'"
-                f" {''.join(other)}"
-                " ORDER BY start"
-            )
-        else:
-            return (
-                "SELECT name, start, end FROM tasks AS T"
-                " INNER JOIN tasklog AS L ON T.id=L.task"
-                f" WHERE name='{task}'"
-                " ORDER BY start"
-            )
+        """Do the query defined by ttrack_tasks"""
+        tasks_text = ", ".join([f'"{v}"' for v in tasks])
+        return (
+            "SELECT name, start, end FROM tasks AS T"
+            " INNER JOIN tasklog AS L ON T.id=L.task"
+            f" WHERE name IN ({tasks_text})"
+            " ORDER BY start"
+        )
 
-    def _get_list_of_tasks_entries_in_timestamp(self):
+    def _execute_query(self):
+        """Execute the query and returns a list cointaining""" 
+        """tasks with time in timestamp format"""
         cur = self._conn_point()
         entries_in_timestamp = []
         for row in cur.execute(
-            self._get_query()
-        ):  # TODO Externalize _get_query() to receive params from func call
+            self._get_query(self.tasks)  # TODO Except type error
+        ):
             entries_in_timestamp.append(row)
         return entries_in_timestamp
 
-    def _format_unix_time_to_datetime_obj_in_lists(self):
-        entries = self._get_list_of_tasks_entries_in_timestamp()
+    def _format_date(self):
+        """Format timestamp date to datetime objects"""
+        entries = self._execute_query()
         list_of_entries_with_formated_date = []
         for task, start, end in entries:
             start_f = dt.datetime.fromtimestamp(start)
@@ -62,7 +51,8 @@ class TTrack:
         return list_of_entries_with_formated_date
 
     def _prepare_dataframe(self):
-        raw_data = self._format_unix_time_to_datetime_obj_in_lists()
+        """Get the result and transform in a Pandas DataFrame"""
+        raw_data = self._format_date()
         data = []
         for task, start, end in raw_data:
             time_worked = end - start
@@ -76,11 +66,12 @@ class TTrack:
         return df
 
     def _filter_by_month(self, year_month=None):
+        """Month is defined along with the Invoicex generation"""
         df = self._prepare_dataframe()
         if year_month is None:
             return df
         else:
-            return df[df["date"].str.contains(str(year_month))]
+            return df[df["date"].str.startswith(str(year_month))]
 
     def _group_tasks_remove_duplicates(self, v):
         tasks = v.to_string(index=False).split()
@@ -91,11 +82,9 @@ class TTrack:
     def _group_time_and_sum(self, v):
         return v.sum()
 
-    def _group_tasks_and_time(self):
-        df = self._filter_by_month(
-            "2022-06"
-        )  # TODO Externalize _filter_by_month to the same function that _get_query()
-        print(df)
+    def _generate_dataframe(self):
+        """Create the final DataFrame"""
+        df = self._filter_by_month(self.year_month)
         df_grouped = df.groupby("date").aggregate(
             lambda v: self._group_tasks_remove_duplicates(v)
             if v.name == "task"
@@ -103,9 +92,9 @@ class TTrack:
         )
         return df_grouped
 
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        return self._group_tasks_and_time()
 
-
-# e = TTrack(TTRACK_DB)
-# print(e())
+def get_data(args) -> pd.DataFrame:
+    """ """
+    database = TTRACK_DB
+    ttrack_df = TTrack(database, args)
+    return ttrack_df._generate_dataframe()
