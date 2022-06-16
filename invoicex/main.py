@@ -5,8 +5,9 @@ from datetime import date, timedelta
 import os
 import time
 
-import reader
+import invoicex.reader.github as github
 import report
+import invoicex.reader.ttrack as ttrack
 
 
 def cli_parser():
@@ -59,7 +60,7 @@ def cli_parser():
         action="store",
         type=str,
         default=time.strftime("%z"),
-        help="The GitHub access token.",
+        help="The invoice timezone",
     )
     # TODO: add option for custom output dir
     """
@@ -72,14 +73,23 @@ def cli_parser():
         help="The output directory for the reports (default: /tmp)",
     )
     """
+    parser.add_argument(
+        "--ttrack-task",
+        dest="ttrack_task",
+        action="append",
+        required=False,
+        default=[],
+        help="Task name from TTrack",
+    )
 
     return parser
 
 
 async def main():
     args = cli_parser().parse_args()
-    results = await reader.get_data(args)
-    await report.generate(results, args)
+    results = await ttrack.get_data(args)
+    print(results)
+    # await report.generate(results, args)
 
 
 if __name__ == "__main__":
