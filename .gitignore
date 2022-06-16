@@ -1,4 +1,4 @@
 *.env*
 __pycache__
 .vscode/
-data_test/.timetrackdb*
+data_test/

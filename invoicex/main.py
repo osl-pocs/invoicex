@@ -77,7 +77,6 @@ def cli_parser():
         "--ttrack-task",
         dest="ttrack_task",
         action="append",
-        type=list,
         required=False,
         default=[],
         help="Task name from TTrack",
@@ -88,8 +87,9 @@ def cli_parser():
 
 async def main():
     args = cli_parser().parse_args()
-    results = await github.get_data(args)
-    await report.generate(results, args)
+    results = await ttrack.get_data(args)
+    print(results)
+    # await report.generate(results, args)
 
 
 if __name__ == "__main__":
